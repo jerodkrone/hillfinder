@@ -65,6 +65,7 @@ Then `app/utils/geo.py` computes grades and the response is sorted steepest-firs
 | `LOG_LEVEL` | No | INFO | |
 | `HILLFINDER_MAX_WAYS` | No | 200 | Caps Overpass results |
 | `ORS_TIMEOUT_S` | No | 15 | HTTP client timeout in seconds; used in `main.py` (client-level) and `elevation.py` (per-request) |
+| `OVERPASS_TIMEOUT_S` | No | 180 | Overpass API timeout in seconds; used in `overpass.py` |
 | `HILLFINDER_FLAT_THRESHOLD_PCT` | No | 1.0 | Grade % below which a node pair is treated as flat |
 | `HILLFINDER_MIN_SEGMENT_M` | No | 50.0 | Minimum climbing run length in metres |
 

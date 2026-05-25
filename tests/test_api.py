@@ -209,6 +209,9 @@ def test_get_hills_one_way_two_segments(client_with_key):
     results = response.json()
     assert len(results) == 2
     assert all(s["name"] == "Test Hill" for s in results)
+    assert results[0]["way_id"] == 1001
+    assert results[1]["way_id"] == 1001
+    assert {results[0]["way_segment_index"], results[1]["way_segment_index"]} == {0, 1}
 
 
 def test_get_hills_min_grade_filters_low(client_with_key):
@@ -309,7 +312,7 @@ def test_get_hills_min_grade_boundary(client_with_key):
 
 
 def test_get_hills_zero_length_way_excluded(client_with_key):
-    # Two coincident coordinates → length_m = 0 → filtered out by router
+    # Two coincident coordinates → pair_grade = 0.0 → split_into_climbing_segments returns [] → no segments emitted
     overpass_coincident = {
         "elements": [
             {

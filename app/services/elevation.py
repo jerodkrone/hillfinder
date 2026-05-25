@@ -19,7 +19,7 @@ def _chunk_coordinates(coordinates: list[tuple[float, float]], chunk_size: int =
     start = 0
     while start < len(coordinates):
         end = start + chunk_size
-        if end >= len(coordinates) or len(coordinates) - end <= 1:
+        if end >= len(coordinates) or (start > 0 and len(coordinates) - end <= 1):
             chunks.append(coordinates[start:])
             break
         chunks.append(coordinates[start:end])

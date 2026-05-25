@@ -28,6 +28,17 @@ def test_chunk_coordinates_under_chunk_size():
     assert chunks[0] == coords
 
 
+def test_chunk_coordinates_501_stays_within_limit():
+    # Regression: 501 coords triggered the tail-absorption guard on the first chunk,
+    # placing all 501 points in one chunk and exceeding ORS's 500-point hard limit.
+    coords = [(float(i), float(i)) for i in range(501)]
+    chunks = _chunk_coordinates(coords, chunk_size=500)
+    assert len(chunks) == 2, f"Expected 2 chunks, got {len(chunks)}"
+    assert len(chunks[0]) == 500, "First chunk must not exceed chunk_size"
+    total = len(chunks[0]) + sum(len(c) - 1 for c in chunks[1:])
+    assert total == 501, f"Reassembly count mismatch: {total}"
+
+
 def test_chunk_coordinates_exact_multiple():
     # 1000 coords with chunk_size=500: the trailing 1-new-point chunk must be absorbed
     coords = [(float(i), float(i)) for i in range(1000)]

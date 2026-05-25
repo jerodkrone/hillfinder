@@ -92,8 +92,6 @@ async def get_hills(
                 continue
 
             length_m = compute_total_length_m(seg_coords)
-            if length_m == 0.0:
-                continue
 
             results.append(HillSegment(
                 name=way["name"],
