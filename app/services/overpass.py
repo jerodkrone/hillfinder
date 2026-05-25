@@ -1,10 +1,13 @@
 import logging
 import math
+import os
 
 import httpx
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
+
+OVERPASS_TIMEOUT = float(os.getenv("OVERPASS_TIMEOUT_S", "180"))
 
 OVERPASS_URL = "https://overpass.private.coffee/api/interpreter"
 
@@ -59,7 +62,7 @@ async def fetch_ways(
         response = await client.get(
             OVERPASS_URL,
             params={"data": query},
-            timeout=180.0,
+            timeout=OVERPASS_TIMEOUT,
         )
         response.raise_for_status()
         data = response.json()
@@ -88,6 +91,7 @@ async def fetch_ways(
         coords = [(node["lat"], node["lon"]) for node in geometry]
         ways.append({
             "name": tags.get("name"),
+            "way_id": element.get("id"),
             "surface": _classify_surface(tags),
             "coordinates": coords,
         })
