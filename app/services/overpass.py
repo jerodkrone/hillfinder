@@ -88,6 +88,7 @@ async def fetch_ways(
         coords = [(node["lat"], node["lon"]) for node in geometry]
         ways.append({
             "name": tags.get("name"),
+            "way_id": element.get("id"),
             "surface": _classify_surface(tags),
             "coordinates": coords,
         })

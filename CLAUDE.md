@@ -52,6 +52,7 @@ Then `app/utils/geo.py` computes grades and the response is sorted steepest-firs
 - **Chunking:** elevation coordinates chunked at 500 with a 1-point boundary overlap to maintain continuity; overlap points are deduplicated on reassembly.
 - **Surface classification:** checks OSM `surface` tag first, then falls back to `highway` tag to decide road / trail / unknown.
 - **Way filtering:** zero-length ways are dropped before grade calculation to prevent division by zero.
+- **Elevation noise sensitivity:** `split_into_climbing_segments()` is sensitive to elevation noise — a 1 m spike over 2 m horizontal distance produces a 50% grade pair that re-opens a run. `HILLFINDER_FLAT_THRESHOLD_PCT` is the tuning lever; no smoothing is applied in Sprint 2. Sprint 3 candidate: 3-point rolling average behind `HILLFINDER_SMOOTH_ELEVATIONS=false`.
 - **Rate limiting:** Nominatim lock is held for 1 second per call; ORS 429 responses are surfaced as 429 to the client.
 - **Error mapping:** timeouts → 504, upstream service errors → 502, unresolvable address → 400.
 
@@ -63,6 +64,9 @@ Then `app/utils/geo.py` computes grades and the response is sorted steepest-firs
 | `NOMINATIM_CONTACT_EMAIL` | No | contact@example.com | Sent in User-Agent per OSM policy |
 | `LOG_LEVEL` | No | INFO | |
 | `HILLFINDER_MAX_WAYS` | No | 200 | Caps Overpass results |
+| `ORS_TIMEOUT_S` | No | 15 | HTTP client timeout in seconds; used in `main.py` (client-level) and `elevation.py` (per-request) |
+| `HILLFINDER_FLAT_THRESHOLD_PCT` | No | 1.0 | Grade % below which a node pair is treated as flat |
+| `HILLFINDER_MIN_SEGMENT_M` | No | 50.0 | Minimum climbing run length in metres |
 
 ## Coding best practices
 
