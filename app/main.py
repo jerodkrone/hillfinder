@@ -17,6 +17,9 @@ logging.basicConfig(
 )
 
 
+_HTTP_TIMEOUT_S = float(os.getenv("ORS_TIMEOUT_S", "15"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.ors_api_key = os.getenv("ORS_API_KEY", "")

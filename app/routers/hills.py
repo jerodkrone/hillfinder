@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
@@ -7,7 +8,7 @@ from app.models.hill import HillSegment
 from app.services.geocoding import geocode_address
 from app.services.overpass import fetch_ways
 from app.services.elevation import get_elevations
-from app.utils.geo import compute_grades, compute_total_length_m
+from app.utils.geo import compute_grades, compute_total_length_m, split_into_climbing_segments
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -20,8 +21,13 @@ async def get_hills(
     request: Request,
     address: str = Query(min_length=1),
     radius_m: int = Query(default=3000, ge=100, le=10000),
+    min_grade_pct: float = Query(default=3.0, ge=0.0, le=100.0),
+    surface: Literal["road", "trail", "unknown"] | None = Query(default=None),
 ):
-    logger.info("GET /hills/ address=%r radius_m=%d", address, radius_m)
+    logger.info(
+        "GET /hills/ address=%r radius_m=%d min_grade_pct=%.1f surface=%r",
+        address, radius_m, min_grade_pct, surface,
+    )
     api_key = request.app.state.ors_api_key
     if not api_key:
         raise HTTPException(500, "ORS_API_KEY not configured")
@@ -56,29 +62,48 @@ async def get_hills(
 
     results = []
     for way, (start, end) in zip(ways, way_slices):
+        if surface is not None and way["surface"] != surface:
+            continue
+
         coords = way["coordinates"]
         elevations = all_elevations[start:end]
+
         try:
-            avg_grade, max_grade = compute_grades(coords, elevations)
+            climbing_runs = split_into_climbing_segments(coords, elevations)
         except ValueError as exc:
-            raise HTTPException(500, f"Grade computation failed: {exc}") from exc
-        length_m = compute_total_length_m(coords)
-        if length_m == 0.0:
-            logger.debug("Skipping zero-length way: %r", way.get("name"))
+            logger.warning("Segment split failed for way %r: %s", way.get("name"), exc)
             continue
-        logger.debug(
-            "Way %r: avg_grade=%.2f%% max_grade=%.2f%% length=%.1fm surface=%s",
-            way.get("name"), avg_grade, max_grade, length_m, way.get("surface"),
-        )
-        results.append(HillSegment(
-            name=way["name"],
-            grade_avg_pct=avg_grade,
-            grade_max_pct=max_grade,
-            length_m=length_m,
-            surface=way["surface"],
-            coordinates=coords,
-        ))
+
+        if not climbing_runs:
+            logger.debug("No climbing segments found for way %r", way.get("name"))
+            continue
+
+        for seg_index, (seg_coords, seg_elevs) in enumerate(climbing_runs):
+            try:
+                avg_grade, max_grade = compute_grades(seg_coords, seg_elevs)
+            except ValueError as exc:
+                logger.warning(
+                    "Grade compute failed for segment %d of way %r: %s",
+                    seg_index, way.get("name"), exc,
+                )
+                continue
+
+            if avg_grade < min_grade_pct:
+                continue
+
+            length_m = compute_total_length_m(seg_coords)
+
+            results.append(HillSegment(
+                name=way["name"],
+                way_id=way["way_id"],
+                grade_avg_pct=avg_grade,
+                grade_max_pct=max_grade,
+                length_m=length_m,
+                surface=way["surface"],
+                coordinates=seg_coords,
+                way_segment_index=seg_index,
+            ))
 
     results.sort(key=lambda s: s.grade_avg_pct, reverse=True)
-    logger.info("Returning %d hills for address=%r", len(results), address)
+    logger.info("Returning %d segments (from %d ways) for address=%r", len(results), len(ways), address)
     return results
