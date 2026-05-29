@@ -15,7 +15,16 @@ router = APIRouter()
 _MAX_WAYS = int(os.getenv("HILLFINDER_MAX_WAYS", "200"))
 
 
-@router.get("/hills/", response_model=list[HillSegment])
+@router.get(
+    "/hills/",
+    response_model=list[HillSegment],
+    responses={
+        400: {"description": "Address could not be geocoded"},
+        429: {"description": "Upstream rate limit (ORS)"},
+        502: {"description": "Upstream service error (Nominatim / Overpass / ORS)"},
+        504: {"description": "Upstream service timed out"},
+    },
+)
 async def get_hills(
     request: Request,
     address: str = Query(min_length=1),
