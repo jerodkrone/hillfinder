@@ -28,7 +28,7 @@
 
     html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; background: var(--slate-100); color: var(--slate-800); }
 
-    /* Layout */
+    /* ── Layout ── */
     #app { display: flex; flex-direction: column; height: 100vh; }
 
     header {
@@ -48,7 +48,7 @@
 
     #body { display: flex; flex: 1; overflow: hidden; }
 
-    /* Sidebar */
+    /* ── Sidebar ── */
     #sidebar {
       width: 360px;
       flex-shrink: 0;
@@ -121,7 +121,7 @@
     .loading .btn-text { display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Error banner */
+    /* ── Error banner ── */
     #error-banner {
       margin: 10px 14px 0;
       padding: 9px 12px;
@@ -135,7 +135,7 @@
     }
     #error-banner.visible { display: block; }
 
-    /* Results list */
+    /* ── Results list ── */
     #results-header {
       padding: 10px 14px 6px;
       font-size: .72rem;
@@ -161,7 +161,7 @@
     }
     .empty-state svg { margin-bottom: 12px; opacity: .4; }
 
-    /* Hill card */
+    /* ── Hill card ── */
     .hill-card {
       padding: 12px 14px;
       border-bottom: 1px solid var(--slate-100);
@@ -204,10 +204,10 @@
     .surface-trail   { background: #dcfce7; color: #166534; }
     .surface-unknown { background: var(--slate-100); color: var(--slate-600); }
 
-    /* Map */
+    /* ── Map ── */
     #map { flex: 1; }
 
-    /* Responsive */
+    /* ── Responsive ── */
     @media (max-width: 640px) {
       #body { flex-direction: column; }
       #sidebar { width: 100%; height: 45%; }
@@ -266,24 +266,18 @@
 <script>
   const API_BASE = '';  // empty = same origin; change to 'http://localhost:8000' if opening as file://
 
-  function esc(str) {
-    return str == null ? '' : String(str)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
-  // Map setup
+  // ── Map setup ──────────────────────────────────────────────────────────────
   const map = L.map('map', { zoomControl: true }).setView([39.5, -98.35], 4);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
   }).addTo(map);
 
-  // State
+  // ── State ──────────────────────────────────────────────────────────────────
   let polylines = [];
   let activeIndex = -1;
 
-  // Grade color: green -> lime -> amber -> red -> purple
+  // ── Grade → color ──────────────────────────────────────────────────────────
   function gradeColor(grade) {
     if (grade < 3)  return '#22c55e';
     if (grade < 6)  return '#84cc16';
@@ -292,11 +286,20 @@
     return '#7c3aed';
   }
 
+  // ── Format helpers ─────────────────────────────────────────────────────────
   function fmtLength(m) {
     return m >= 1000 ? (m / 1000).toFixed(2) + ' km' : Math.round(m) + ' m';
   }
   function fmtGrade(g) { return g.toFixed(1) + '%'; }
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ── Render results ─────────────────────────────────────────────────────────
   function clearResults() {
     polylines.forEach(p => p.remove());
     polylines = [];
@@ -322,16 +325,20 @@
     const bounds = [];
 
     hills.forEach((hill, i) => {
-      // coordinates are [lat, lon] tuples from the API
+      // coords are [lat, lon] tuples — Leaflet wants the same
       const latLngs = hill.coordinates.map(([lat, lon]) => [lat, lon]);
       bounds.push(...latLngs);
 
       const color = gradeColor(hill.grade_avg_pct);
 
-      const poly = L.polyline(latLngs, { color, weight: 4, opacity: 0.85 }).addTo(map);
+      const poly = L.polyline(latLngs, {
+        color,
+        weight: 4,
+        opacity: 0.85,
+      }).addTo(map);
 
       poly.bindTooltip(
-        `<strong>${esc(hill.name) || 'Unnamed'}</strong><br/>` +
+        `<strong>${escHtml(hill.name || 'Unnamed')}</strong><br/>` +
         `Avg grade: ${fmtGrade(hill.grade_avg_pct)}<br/>` +
         `Max grade: ${fmtGrade(hill.grade_max_pct)}<br/>` +
         `Length: ${fmtLength(hill.length_m)}`,
@@ -347,16 +354,17 @@
       card.dataset.index = i;
 
       const surfaceClass = `surface-${hill.surface}`;
+      const surfaceLabel = hill.surface.charAt(0).toUpperCase() + hill.surface.slice(1);
 
       card.innerHTML = `
         <div class="card-top">
-          <span class="card-name ${hill.name ? '' : 'unnamed'}">${esc(hill.name) || 'Unnamed segment'}</span>
+          <span class="card-name ${hill.name ? '' : 'unnamed'}">${escHtml(hill.name || 'Unnamed segment')}</span>
           <span class="grade-badge" style="background:${color}">${fmtGrade(hill.grade_avg_pct)}</span>
         </div>
         <div class="card-stats">
           <span class="stat">Max <strong>${fmtGrade(hill.grade_max_pct)}</strong></span>
           <span class="stat">&#8596; <strong>${fmtLength(hill.length_m)}</strong></span>
-          <span class="surface-badge ${surfaceClass}">${hill.surface}</span>
+          <span class="surface-badge ${surfaceClass}">${surfaceLabel}</span>
         </div>
       `;
 
@@ -368,8 +376,10 @@
   }
 
   function activateCard(index) {
+    // Reset previous
     if (activeIndex >= 0 && activeIndex < polylines.length) {
-      polylines[activeIndex].setStyle({ weight: 4, opacity: 0.85 });
+      const prev = polylines[activeIndex];
+      prev.setStyle({ weight: 4, opacity: 0.85 });
     }
     document.querySelectorAll('.hill-card').forEach(c => c.classList.remove('active'));
 
@@ -387,6 +397,7 @@
     map.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 17 });
   }
 
+  // ── Search ─────────────────────────────────────────────────────────────────
   function showError(msg) {
     const el = document.getElementById('error-banner');
     el.textContent = msg;
@@ -406,14 +417,17 @@
 
   async function search() {
     const address = document.getElementById('address').value.trim();
-    if (!address) { document.getElementById('address').focus(); return; }
+    if (!address) {
+      document.getElementById('address').focus();
+      return;
+    }
 
     clearError();
     setLoading(true);
     clearResults();
     document.getElementById('results-header').style.display = 'none';
     document.getElementById('results-list').innerHTML =
-      '<div class="empty-state"><p>Searching...</p></div>';
+      '<div class="empty-state"><p>Searching…</p></div>';
 
     const radius = document.getElementById('radius').value;
     const url = `${API_BASE}/hills/?address=${encodeURIComponent(address)}&radius_m=${radius}`;
@@ -422,9 +436,11 @@
       const res = await fetch(url);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `HTTP ${res.status}`);
+        const detail = body.detail || `HTTP ${res.status}`;
+        throw new Error(detail);
       }
-      renderResults(await res.json());
+      const hills = await res.json();
+      renderResults(hills);
     } catch (err) {
       document.getElementById('results-list').innerHTML =
         '<div class="empty-state"><p>No results to display.</p></div>';
@@ -434,6 +450,7 @@
     }
   }
 
+  // ── Event listeners ────────────────────────────────────────────────────────
   document.getElementById('search-btn').addEventListener('click', search);
   document.getElementById('address').addEventListener('keydown', e => {
     if (e.key === 'Enter') search();
