@@ -63,6 +63,10 @@ Then `app/utils/geo.py` computes grades and the response is sorted steepest-firs
 | `NOMINATIM_CONTACT_EMAIL` | No | contact@example.com | Sent in User-Agent per OSM policy |
 | `LOG_LEVEL` | No | INFO | |
 | `HILLFINDER_MAX_WAYS` | No | 200 | Caps Overpass results |
+| `ORS_TIMEOUT_S` | No | 15 | ORS elevation API request timeout (seconds) |
+| `NOMINATIM_TIMEOUT_S` | No | 10 | Nominatim geocoding request timeout (seconds) |
+| `OVERPASS_TIMEOUT_S` | No | 180 | Overpass API request timeout (seconds) |
+| `HTTP_CLIENT_TIMEOUT_S` | No | 15 | Default httpx client timeout (seconds) |
 
 ## Coding best practices
 

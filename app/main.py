@@ -18,7 +18,7 @@ logging.basicConfig(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.ors_api_key = os.getenv("ORS_API_KEY", "")
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=float(os.getenv("HTTP_CLIENT_TIMEOUT_S", "15"))) as client:
         app.state.http_client = client
         yield
 

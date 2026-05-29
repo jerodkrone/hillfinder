@@ -1,4 +1,5 @@
 import logging
+import os
 
 import httpx
 from fastapi import HTTPException
@@ -6,7 +7,7 @@ from fastapi import HTTPException
 logger = logging.getLogger(__name__)
 
 ORS_ELEVATION_URL = "https://api.openrouteservice.org/elevation/line"
-ORS_TIMEOUT = 15.0
+ORS_TIMEOUT = float(os.getenv("ORS_TIMEOUT_S", "15"))
 ORS_CHUNK_SIZE = 500
 
 
