@@ -266,6 +266,12 @@
 <script>
   const API_BASE = '';  // empty = same origin; change to 'http://localhost:8000' if opening as file://
 
+  function esc(str) {
+    return str == null ? '' : String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   // Map setup
   const map = L.map('map', { zoomControl: true }).setView([39.5, -98.35], 4);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -325,7 +331,7 @@
       const poly = L.polyline(latLngs, { color, weight: 4, opacity: 0.85 }).addTo(map);
 
       poly.bindTooltip(
-        `<strong>${hill.name || 'Unnamed'}</strong><br/>` +
+        `<strong>${esc(hill.name) || 'Unnamed'}</strong><br/>` +
         `Avg grade: ${fmtGrade(hill.grade_avg_pct)}<br/>` +
         `Max grade: ${fmtGrade(hill.grade_max_pct)}<br/>` +
         `Length: ${fmtLength(hill.length_m)}`,
@@ -344,7 +350,7 @@
 
       card.innerHTML = `
         <div class="card-top">
-          <span class="card-name ${hill.name ? '' : 'unnamed'}">${hill.name || 'Unnamed segment'}</span>
+          <span class="card-name ${hill.name ? '' : 'unnamed'}">${esc(hill.name) || 'Unnamed segment'}</span>
           <span class="grade-badge" style="background:${color}">${fmtGrade(hill.grade_avg_pct)}</span>
         </div>
         <div class="card-stats">
