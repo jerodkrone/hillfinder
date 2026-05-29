@@ -35,7 +35,7 @@ app.include_router(hills.router)
 _FRONTEND = Path(__file__).parent.parent / "frontend" / "index.html"
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def serve_frontend():
     if not _FRONTEND.is_file():
         raise HTTPException(404, "Frontend not built — place index.html in frontend/")

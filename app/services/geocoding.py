@@ -9,7 +9,7 @@ from fastapi import HTTPException
 logger = logging.getLogger(__name__)
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-NOMINATIM_TIMEOUT = 10.0
+NOMINATIM_TIMEOUT = float(os.getenv("NOMINATIM_TIMEOUT_S", "10"))
 NOMINATIM_MIN_INTERVAL = 1.0  # Nominatim usage policy: 1 req/sec
 
 _contact = os.getenv("NOMINATIM_CONTACT_EMAIL", "contact@example.com")
