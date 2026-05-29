@@ -64,6 +64,7 @@ Then `app/utils/geo.py` computes grades and the response is sorted steepest-firs
 | `NOMINATIM_CONTACT_EMAIL` | No | contact@example.com | Sent in User-Agent per OSM policy |
 | `LOG_LEVEL` | No | INFO | |
 | `HILLFINDER_MAX_WAYS` | No | 200 | Caps Overpass results |
+| `HTTP_CLIENT_TIMEOUT_S` | No | 15 | Shared httpx.AsyncClient timeout (seconds) |
 | `ORS_TIMEOUT_S` | No | 15 | HTTP client timeout in seconds; used in `main.py` (client-level) and `elevation.py` (per-request) |
 | `OVERPASS_TIMEOUT_S` | No | 180 | Overpass API timeout in seconds; used in `overpass.py` |
 | `HILLFINDER_FLAT_THRESHOLD_PCT` | No | 1.0 | Grade % below which a node pair is treated as flat |
@@ -76,3 +77,21 @@ Then `app/utils/geo.py` computes grades and the response is sorted steepest-firs
 ## Testing
 
 Tests use `pytest-asyncio` (all service tests are async) and `respx` for HTTP mocking. There are no real external calls in tests. `conftest.py` wires up shared fixtures.
+
+## Skill routing
+
+When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
+
+Key routing rules:
+- Product ideas/brainstorming → invoke /office-hours
+- Strategy/scope → invoke /plan-ceo-review
+- Architecture → invoke /plan-eng-review
+- Design system/plan review → invoke /design-consultation or /plan-design-review
+- Full review pipeline → invoke /autoplan
+- Bugs/errors → invoke /investigate
+- QA/testing site behavior → invoke /qa or /qa-only
+- Code review/diff check → invoke /review
+- Visual polish → invoke /design-review
+- Ship/deploy/PR → invoke /ship or /land-and-deploy
+- Save progress → invoke /context-save
+- Resume context → invoke /context-restore
