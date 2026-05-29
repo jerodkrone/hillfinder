@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HillFinder</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green-900: #14532d;
+      --green-700: #15803d;
+      --green-600: #16a34a;
+      --green-50:  #f0fdf4;
+      --slate-50:  #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-400: #94a3b8;
+      --slate-600: #475569;
+      --slate-800: #1e293b;
+      --red:       #ef4444;
+      --radius:    8px;
+      --shadow:    0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+    }
+
+    html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; background: var(--slate-100); color: var(--slate-800); }
+
+    /* ── Layout ── */
+    #app { display: flex; flex-direction: column; height: 100vh; }
+
+    header {
+      background: var(--green-900);
+      color: #fff;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 52px;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-md);
+      z-index: 10;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: -.02em; }
+    header span { font-size: .8rem; color: #86efac; }
+
+    #body { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 360px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      box-shadow: 2px 0 8px rgba(0,0,0,.08);
+      z-index: 5;
+      overflow: hidden;
+    }
+
+    #search-panel {
+      padding: 14px 14px 12px;
+      border-bottom: 1px solid var(--slate-200);
+      flex-shrink: 0;
+    }
+    #search-panel label { display: block; font-size: .72rem; font-weight: 600; color: var(--slate-600); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+    #address {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius);
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .15s;
+    }
+    #address:focus { border-color: var(--green-600); box-shadow: 0 0 0 3px rgba(22,163,74,.15); }
+
+    .row { display: flex; gap: 8px; margin-top: 8px; }
+    #radius {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius);
+      font-size: .85rem;
+      background: #fff;
+      outline: none;
+      cursor: pointer;
+    }
+    #radius:focus { border-color: var(--green-600); }
+    #search-btn {
+      flex: 1;
+      padding: 8px 14px;
+      background: var(--green-700);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    #search-btn:hover { background: var(--green-600); }
+    #search-btn:disabled { background: var(--slate-400); cursor: not-allowed; }
+
+    /* spinner */
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: none;
+    }
+    .loading .spinner { display: block; }
+    .loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error banner ── */
+    #error-banner {
+      margin: 10px 14px 0;
+      padding: 9px 12px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius);
+      color: #b91c1c;
+      font-size: .82rem;
+      display: none;
+      flex-shrink: 0;
+    }
+    #error-banner.visible { display: block; }
+
+    /* ── Results list ── */
+    #results-header {
+      padding: 10px 14px 6px;
+      font-size: .72rem;
+      font-weight: 600;
+      color: var(--slate-600);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--slate-200);
+    }
+
+    #results-list {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--slate-400);
+      font-size: .85rem;
+      line-height: 1.6;
+    }
+    .empty-state svg { margin-bottom: 12px; opacity: .4; }
+
+    /* ── Hill card ── */
+    .hill-card {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--slate-100);
+      cursor: pointer;
+      transition: background .1s;
+      position: relative;
+    }
+    .hill-card:hover { background: var(--green-50); }
+    .hill-card.active { background: var(--green-50); border-left: 3px solid var(--green-700); }
+
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card-name { font-size: .88rem; font-weight: 600; line-height: 1.3; flex: 1; }
+    .card-name.unnamed { color: var(--slate-400); font-style: italic; font-weight: 400; }
+
+    .grade-badge {
+      font-size: .78rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 12px;
+      color: #fff;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .card-stats { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+    .stat { font-size: .75rem; color: var(--slate-600); display: flex; align-items: center; gap: 3px; }
+    .stat strong { color: var(--slate-800); }
+
+    .surface-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: .7rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      text-transform: capitalize;
+    }
+    .surface-road    { background: #dbeafe; color: #1d4ed8; }
+    .surface-trail   { background: #dcfce7; color: #166534; }
+    .surface-unknown { background: var(--slate-100); color: var(--slate-600); }
+
+    /* ── Map ── */
+    #map { flex: 1; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      #body { flex-direction: column; }
+      #sidebar { width: 100%; height: 45%; }
+      #map { flex: none; height: 55%; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 20 L9 9 L14 15 L18 7 L21 20 Z"/>
+    </svg>
+    <h1>HillFinder</h1>
+    <span>Steepest roads &amp; trails near you</span>
+  </header>
+
+  <div id="body">
+    <aside id="sidebar">
+      <div id="search-panel">
+        <label for="address">Location</label>
+        <input id="address" type="text" placeholder="e.g. San Francisco, CA" autocomplete="off" />
+        <div class="row">
+          <select id="radius" title="Search radius">
+            <option value="500">0.5 km radius</option>
+            <option value="1000">1 km radius</option>
+            <option value="2000">2 km radius</option>
+            <option value="3000" selected>3 km radius</option>
+            <option value="5000">5 km radius</option>
+            <option value="10000">10 km radius</option>
+          </select>
+          <button id="search-btn" type="button">
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="btn-text">Find Hills</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="error-banner" role="alert"></div>
+
+      <div id="results-header" style="display:none">Results</div>
+      <div id="results-list">
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 20 L9 9 L14 15 L18 7 L21 20 Z"/>
+          </svg>
+          <p>Enter an address above to find<br/>nearby hills ranked by steepness.</p>
+        </div>
+      </div>
+    </aside>
+
+    <div id="map"></div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = '';  // empty = same origin; change to 'http://localhost:8000' if opening as file://
+
+  // ── Map setup ──────────────────────────────────────────────────────────────
+  const map = L.map('map', { zoomControl: true }).setView([39.5, -98.35], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let polylines = [];
+  let activeIndex = -1;
+
+  // ── Grade → color ──────────────────────────────────────────────────────────
+  function gradeColor(grade) {
+    if (grade < 3)  return '#22c55e';
+    if (grade < 6)  return '#84cc16';
+    if (grade < 10) return '#f59e0b';
+    if (grade < 15) return '#ef4444';
+    return '#7c3aed';
+  }
+
+  // ── Format helpers ─────────────────────────────────────────────────────────
+  function fmtLength(m) {
+    return m >= 1000 ? (m / 1000).toFixed(2) + ' km' : Math.round(m) + ' m';
+  }
+  function fmtGrade(g) { return g.toFixed(1) + '%'; }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ── Render results ─────────────────────────────────────────────────────────
+  function clearResults() {
+    polylines.forEach(p => p.remove());
+    polylines = [];
+    activeIndex = -1;
+  }
+
+  function renderResults(hills) {
+    clearResults();
+
+    const list = document.getElementById('results-list');
+    const header = document.getElementById('results-header');
+
+    if (hills.length === 0) {
+      header.style.display = 'none';
+      list.innerHTML = '<div class="empty-state"><p>No hills found in this area.<br/>Try a larger radius.</p></div>';
+      return;
+    }
+
+    header.textContent = `${hills.length} segment${hills.length !== 1 ? 's' : ''} found`;
+    header.style.display = 'block';
+    list.innerHTML = '';
+
+    const bounds = [];
+
+    hills.forEach((hill, i) => {
+      // coords are [lat, lon] tuples — Leaflet wants the same
+      const latLngs = hill.coordinates.map(([lat, lon]) => [lat, lon]);
+      bounds.push(...latLngs);
+
+      const color = gradeColor(hill.grade_avg_pct);
+
+      const poly = L.polyline(latLngs, {
+        color,
+        weight: 4,
+        opacity: 0.85,
+      }).addTo(map);
+
+      poly.bindTooltip(
+        `<strong>${escHtml(hill.name || 'Unnamed')}</strong><br/>` +
+        `Avg grade: ${fmtGrade(hill.grade_avg_pct)}<br/>` +
+        `Max grade: ${fmtGrade(hill.grade_max_pct)}<br/>` +
+        `Length: ${fmtLength(hill.length_m)}`,
+        { sticky: true }
+      );
+
+      poly.on('click', () => activateCard(i));
+      polylines.push(poly);
+
+      // Card
+      const card = document.createElement('div');
+      card.className = 'hill-card';
+      card.dataset.index = i;
+
+      const surfaceClass = `surface-${hill.surface}`;
+      const surfaceLabel = hill.surface.charAt(0).toUpperCase() + hill.surface.slice(1);
+
+      card.innerHTML = `
+        <div class="card-top">
+          <span class="card-name ${hill.name ? '' : 'unnamed'}">${escHtml(hill.name || 'Unnamed segment')}</span>
+          <span class="grade-badge" style="background:${color}">${fmtGrade(hill.grade_avg_pct)}</span>
+        </div>
+        <div class="card-stats">
+          <span class="stat">Max <strong>${fmtGrade(hill.grade_max_pct)}</strong></span>
+          <span class="stat">&#8596; <strong>${fmtLength(hill.length_m)}</strong></span>
+          <span class="surface-badge ${surfaceClass}">${surfaceLabel}</span>
+        </div>
+      `;
+
+      card.addEventListener('click', () => activateCard(i));
+      list.appendChild(card);
+    });
+
+    if (bounds.length) map.fitBounds(bounds, { padding: [24, 24] });
+  }
+
+  function activateCard(index) {
+    // Reset previous
+    if (activeIndex >= 0 && activeIndex < polylines.length) {
+      const prev = polylines[activeIndex];
+      prev.setStyle({ weight: 4, opacity: 0.85 });
+    }
+    document.querySelectorAll('.hill-card').forEach(c => c.classList.remove('active'));
+
+    activeIndex = index;
+    const poly = polylines[index];
+    poly.setStyle({ weight: 6, opacity: 1 });
+    poly.bringToFront();
+
+    const card = document.querySelector(`.hill-card[data-index="${index}"]`);
+    if (card) {
+      card.classList.add('active');
+      card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    map.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 17 });
+  }
+
+  // ── Search ─────────────────────────────────────────────────────────────────
+  function showError(msg) {
+    const el = document.getElementById('error-banner');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+  function clearError() {
+    document.getElementById('error-banner').classList.remove('visible');
+  }
+
+  function setLoading(on) {
+    const btn = document.getElementById('search-btn');
+    btn.classList.toggle('loading', on);
+    btn.disabled = on;
+    document.getElementById('address').disabled = on;
+    document.getElementById('radius').disabled = on;
+  }
+
+  async function search() {
+    const address = document.getElementById('address').value.trim();
+    if (!address) {
+      document.getElementById('address').focus();
+      return;
+    }
+
+    clearError();
+    setLoading(true);
+    clearResults();
+    document.getElementById('results-header').style.display = 'none';
+    document.getElementById('results-list').innerHTML =
+      '<div class="empty-state"><p>Searching…</p></div>';
+
+    const radius = document.getElementById('radius').value;
+    const url = `${API_BASE}/hills/?address=${encodeURIComponent(address)}&radius_m=${radius}`;
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const detail = body.detail || `HTTP ${res.status}`;
+        throw new Error(detail);
+      }
+      const hills = await res.json();
+      renderResults(hills);
+    } catch (err) {
+      document.getElementById('results-list').innerHTML =
+        '<div class="empty-state"><p>No results to display.</p></div>';
+      showError(err.message || 'Something went wrong. Check the address and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Event listeners ────────────────────────────────────────────────────────
+  document.getElementById('search-btn').addEventListener('click', search);
+  document.getElementById('address').addEventListener('keydown', e => {
+    if (e.key === 'Enter') search();
+  });
+</script>
+</body>
+</html>

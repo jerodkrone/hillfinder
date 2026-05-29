@@ -63,6 +63,7 @@ Then `app/utils/geo.py` computes grades and the response is sorted steepest-firs
 | `NOMINATIM_CONTACT_EMAIL` | No | contact@example.com | Sent in User-Agent per OSM policy |
 | `LOG_LEVEL` | No | INFO | |
 | `HILLFINDER_MAX_WAYS` | No | 200 | Caps Overpass results |
+| `HTTP_CLIENT_TIMEOUT_S` | No | 15 | Shared httpx.AsyncClient timeout (seconds) |
 
 ## Coding best practices
 
